@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Website cost calculator · Lewis Waithaka</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F4F6FB; --surface:#FFFFFF; --ink:#101828; --muted:#5D6779; --line:#DDE2EC;
+  --teal:#0E9384; --violet:#6941C6; --amber:#E07B00; --wa:#25D366; --wa-ink:#06301A;
+  --acc:var(--violet);
+  --slip:#FFFDF7; --slip-ink:#1C2333;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0D1220; --surface:#161D2E; --ink:#EEF1F7; --muted:#A1AABD; --line:#2A3348;
+    --teal:#2DC2B0; --violet:#9B7BEA; --amber:#F5A524;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0D1220; --surface:#161D2E; --ink:#EEF1F7; --muted:#A1AABD; --line:#2A3348;
+  --teal:#2DC2B0; --violet:#9B7BEA; --amber:#F5A524;
+}
+body[data-pkg="starter"]{--acc:var(--teal)}
+body[data-pkg="business"]{--acc:var(--violet)}
+body[data-pkg="premium"]{--acc:var(--amber)}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Bricolage Grotesque",system-ui,-apple-system,"Segoe UI",sans-serif;font-size:16px;line-height:1.5}
+.wrap{max-width:1040px;margin:0 auto;padding:24px 18px 48px}
+header{margin-bottom:22px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:1.05rem}
+.bars{display:flex;gap:3px}
+.role{display:block;font-weight:400;font-size:.85rem;color:var(--muted);line-height:1.2}
+.bars i{display:block;width:8px;height:22px;border-radius:3px}
+.bars i:nth-child(1){background:var(--teal)}
+.bars i:nth-child(2){background:var(--violet);height:16px;align-self:flex-end}
+.bars i:nth-child(3){background:var(--amber);height:26px;align-self:flex-end}
+h1{font-size:clamp(1.9rem,6vw,2.8rem);line-height:1.05;margin:12px 0 6px;font-weight:800;letter-spacing:-.02em}
+.lead{color:var(--muted);margin:0;max-width:54ch}
+.grid{display:grid;grid-template-columns:1fr;gap:22px}
+@media(min-width:860px){.grid{grid-template-columns:1.25fr .9fr;align-items:start}.slip-col{position:sticky;top:calc(16px + env(safe-area-inset-top,0px))}}
+section{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
+h2{font-size:1.15rem;margin:0 0 4px;font-weight:700}
+.hint{color:var(--muted);font-size:.9rem;margin:0 0 14px}
+.pkgs{display:grid;gap:10px}
+.pkg{--c:var(--violet);position:relative;display:block;border:2px solid var(--line);border-radius:12px;padding:14px 14px 12px 20px;cursor:pointer;overflow:hidden;transition:border-color .15s,background-color .15s}
+.pkg[data-id="starter"]{--c:var(--teal)}
+.pkg[data-id="premium"]{--c:var(--amber)}
+.pkg::before{content:"";position:absolute;left:0;top:0;bottom:0;width:6px;background:var(--c);opacity:.35}
+.pkg input{position:absolute;opacity:0;pointer-events:none}
+.pkg:has(input:checked){border-color:var(--c);background:color-mix(in srgb,var(--c) 9%,var(--surface))}
+.pkg:has(input:checked)::before{opacity:1}
+.pkg:has(input:focus-visible){outline:3px solid var(--c);outline-offset:2px}
+.pkg-top{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.pkg-name{font-weight:700;font-size:1.05rem;color:var(--c)}
+.tag{display:inline-block;margin-left:8px;font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:99px;background:var(--c);color:#fff;vertical-align:middle}
+.pkg-desc{color:var(--muted);font-size:.9rem;margin:4px 0 0}
+.pkg-days{margin:6px 0 0;font-size:.85rem;font-weight:700;color:var(--c)}
+.price{font-family:"Space Mono",ui-monospace,monospace;font-weight:700;white-space:nowrap}
+.row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 10px;margin:0 -10px;border-top:1px solid var(--line);border-radius:10px;transition:background-color .15s}
+.row:first-of-type{border-top:0}
+.row:has(input:checked:not(:disabled)){background:color-mix(in srgb,var(--acc) 10%,transparent);border-top-color:transparent}
+.row:has(input:checked:not(:disabled)) .price{color:var(--acc)}
+.row label{display:flex;gap:10px;align-items:flex-start;cursor:pointer;flex:1}
+.row input[type=checkbox],.row input[type=radio]{width:20px;height:20px;accent-color:var(--acc);margin-top:2px;flex-shrink:0}
+.sub{display:block;color:var(--muted);font-size:.85rem}
+.incl{color:var(--teal)}
+.save{color:var(--teal);font-weight:600}
+.line.strike span:last-child{text-decoration:line-through;color:#7a8394}
+.line.saved{color:#0E7A6E;font-weight:700}
+.addpage{flex-shrink:0;border:2px solid var(--acc);background:color-mix(in srgb,var(--acc) 12%,transparent);color:var(--ink);font:inherit;font-weight:700;border-radius:10px;padding:9px 14px;cursor:pointer}
+.addpage:focus-visible,.chip:focus-visible,.rm:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.chip{border:1px solid var(--line);background:var(--surface);color:var(--ink);font:inherit;font-size:.88rem;border-radius:99px;padding:5px 12px;cursor:pointer}
+.chip:hover{border-color:var(--acc)}
+.pg{display:flex;gap:8px;align-items:center;margin-top:10px}
+.pg input{flex:1;min-width:0;padding:9px 12px;border:2px solid var(--line);border-radius:10px;font:inherit;background:var(--surface);color:var(--ink)}
+.pg input:focus{outline:none;border-color:var(--acc)}
+.pg .price{color:var(--acc);font-size:.9rem}
+.rm{width:38px;height:38px;flex-shrink:0;border:0;border-radius:10px;background:color-mix(in srgb,#D92D20 12%,transparent);color:#D92D20;font-size:1.2rem;cursor:pointer}
+.stepper{display:flex;align-items:center;border:2px solid var(--acc);border-radius:10px;overflow:hidden}
+.stepper button{width:42px;height:40px;border:0;background:color-mix(in srgb,var(--acc) 12%,transparent);color:var(--ink);font-size:1.3rem;cursor:pointer}
+.stepper button:focus-visible{outline:3px solid var(--acc);outline-offset:-3px}
+.stepper output{min-width:38px;text-align:center;font-family:"Space Mono",monospace;font-weight:700}
+.edit{display:none;width:96px;padding:6px 8px;border:2px solid var(--amber);border-radius:8px;font:inherit;font-family:"Space Mono",monospace;background:var(--surface);color:var(--ink);text-align:right}
+body.editing .edit{display:inline-block}
+body.editing .shown{display:none}
+
+.slip{background:var(--slip);color:var(--slip-ink);position:relative;font-family:"Space Mono",ui-monospace,monospace;font-size:.88rem;
+  -webkit-mask:radial-gradient(circle 7px at 50% 100%,transparent 98%,#000) 0 100%/18px 51% repeat-x,linear-gradient(#000,#000) 0 0/100% 50% no-repeat;
+  mask:radial-gradient(circle 7px at 50% 100%,transparent 98%,#000) 0 100%/18px 51% repeat-x,linear-gradient(#000,#000) 0 0/100% 50% no-repeat;
+  filter:drop-shadow(0 8px 18px rgba(16,24,40,.16));border-radius:14px 14px 0 0}
+.slip-head{text-align:center;padding:16px 20px 14px;background:var(--acc);color:#fff;border-radius:14px 14px 0 0;transition:background-color .2s}
+.slip-head strong{display:block;font-family:"Bricolage Grotesque",sans-serif;font-size:1.15rem}
+.slip-body{padding:14px 20px 28px}
+.line{display:flex;justify-content:space-between;gap:10px;padding:3px 0}
+.line span:first-child{flex:1}
+.pline{align-items:center}
+.line[hidden]{display:none}
+.cp{flex-shrink:0;width:58px;padding:4px 0;border:1.5px solid var(--acc);border-radius:8px;background:transparent;color:var(--slip-ink);font:inherit;font-size:.75rem;font-weight:700;cursor:pointer}
+.cp.done{background:var(--acc);color:#fff}
+.cp-gap{width:58px;flex-shrink:0}
+.cp:focus-visible,.cp-all:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+.cp-all{display:block;width:100%;margin-top:10px;padding:10px;border:0;border-radius:10px;background:color-mix(in srgb,var(--acc) 14%,#fff);color:var(--slip-ink);font:inherit;font-weight:700;cursor:pointer}
+.cp-note{font-size:.75rem;color:#5b6475;margin:8px 0 0;text-align:center}
+.line.meta{color:#5b6475;font-size:.8rem}
+.sep{border-top:1px dashed #a3aab8;margin:10px 0}
+.big{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:clamp(2rem,8vw,2.6rem);line-height:1;text-align:center;margin:8px 0 2px;letter-spacing:-.02em;color:var(--acc)}
+.small{color:#5b6475;font-size:.8rem;text-align:center}
+.pay .line span:last-child{font-weight:700}
+.actions{display:grid;gap:10px;margin-top:16px}
+.btn{display:block;width:100%;text-align:center;padding:13px 16px;border-radius:12px;border:2px solid transparent;font:inherit;font-weight:700;cursor:pointer;text-decoration:none}
+.btn-wa{background:var(--wa);color:var(--wa-ink)}
+.btn-ghost{background:transparent;color:var(--ink);border-color:var(--acc)}
+.btn:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+.client{width:100%;padding:10px 12px;border:2px solid var(--line);border-radius:10px;font:inherit;background:var(--surface);color:var(--ink)}
+.client:focus{outline:none;border-color:var(--acc)}
+.note{color:var(--muted);font-size:.82rem;text-align:center;margin:2px 0 0}
+.toolbar{display:none;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:6px}
+body.admin .toolbar{display:flex}
+.linkbtn{background:none;border:0;color:var(--acc);font:inherit;font-weight:700;cursor:pointer;padding:6px 0;text-decoration:underline;text-underline-offset:3px}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.show{opacity:1}
+.modal{position:fixed;inset:0;background:rgba(10,14,25,.6);display:flex;align-items:flex-end;justify-content:center;z-index:10;padding:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));padding-top:calc(16px + env(safe-area-inset-top,0px))}
+.modal[hidden]{display:none}
+@media(min-width:600px){.modal{align-items:center}}
+.sheet{background:var(--surface);border-radius:16px;padding:18px;width:100%;max-width:440px;max-height:100%;overflow:auto}
+.steps{margin:6px 0 14px;padding-left:20px;color:var(--ink);font-size:.95rem}
+.steps li{margin:4px 0}
+.imgbox{background:var(--bg);border-radius:12px;padding:10px;max-height:52vh;overflow:auto}
+.imgbox img{display:block;width:100%;height:auto}
+.btn:disabled{opacity:.7;cursor:progress}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body data-pkg="business">
+<div class="wrap">
+  <header>
+    <div class="brand"><span class="bars" aria-hidden="true"><i></i><i></i><i></i></span><span>Lewis Waithaka<span class="role">Web designer</span></span></div>
+    <h1>What will your website cost?</h1>
+    <p class="lead">Pick a package and any extras. Your quote updates as you go, and you can send it straight to me on WhatsApp.</p>
+  </header>
+
+  <div class="grid">
+    <div>
+      <section>
+        <h2>Choose a package</h2>
+        <p class="hint">Every site works on phones and includes a WhatsApp button, Google Maps, Google reviews and basic SEO.</p>
+        <div class="pkgs" id="pkgs"></div>
+      </section>
+
+      <section>
+        <div class="row" style="border:0;padding:0;margin:0">
+          <div>
+            <h2>Extra pages</h2>
+            <p class="hint" style="margin:0">Beyond what your package includes. <span class="price shown" id="pagePriceShown"></span> each
+              <input class="edit" type="number" min="0" step="500" id="pagePriceEdit" aria-label="Price per extra page"></p>
+          </div>
+          <button type="button" class="addpage" id="addPage">+ Add page</button>
+        </div>
+        <div class="chips" id="chips" aria-label="Quick add"></div>
+        <div id="pageList"></div>
+      </section>
+
+      <section>
+        <h2>Add-ons</h2>
+        <p class="hint">One-time extras.</p>
+        <div id="addons"></div>
+      </section>
+
+      <section>
+        <h2>Monthly care plan</h2>
+        <p class="hint">Updates, backups and small edits after launch. Pay 6 months upfront and get 10% off.</p>
+        <div id="plans"></div>
+      </section>
+
+      <div class="toolbar">
+        <button class="linkbtn" type="button" id="editToggle">Edit prices</button>
+        <button class="linkbtn" type="button" id="reset">Reset prices</button>
+      </div>
+    </div>
+
+    <div class="slip-col">
+      <div class="slip" aria-live="polite">
+        <div class="slip-head">
+          <strong>Lewis Waithaka</strong>
+          <span id="slipPkg">Website quote</span>
+        </div>
+        <div class="slip-body">
+          <div class="line meta"><span>Quote no.</span><span id="qNo"></span></div>
+          <div class="line meta"><span>Date</span><span id="qDate"></span></div>
+          <div class="line meta"><span>Delivery</span><span id="qDays"></span></div>
+          <div class="line meta" id="qClientRow" hidden><span>Client</span><span id="qClient"></span></div>
+          <div class="sep"></div>
+          <div id="lines"></div>
+          <div class="sep"></div>
+          <div class="small">One-time total</div>
+          <div class="big" id="total">KES 0</div>
+          <div class="sep"></div>
+          <div class="pay" id="pay"></div>
+          <div class="sep"></div>
+          <div class="line"><span>Domain, yearly</span><span id="domain"></span></div>
+          <div id="care"></div>
+          <div class="sep"></div>
+          <div class="small" style="text-align:left;font-weight:700;color:var(--slip-ink)">How to pay (M-Pesa)</div>
+          <div class="line pline"><span>Paybill</span><span id="payPaybill"></span><button type="button" class="cp" data-copy="paybill" aria-label="Copy Paybill number">Copy</button></div>
+          <div class="line pline"><span>Bank</span><span id="payBank"></span><span class="cp-gap"></span></div>
+          <div class="line pline"><span>Account no.</span><span id="payAcc"></span><button type="button" class="cp" data-copy="account" aria-label="Copy account number">Copy</button></div>
+          <div class="line pline"><span>Name</span><span id="payName" style="text-align:right"></span><span class="cp-gap"></span></div>
+          <button type="button" class="cp-all" id="copyPay">Copy all payment details</button>
+          <p class="cp-note">Double-check the account number before you pay. M-Pesa shows <strong>Equity Bank</strong> as the recipient.</p>
+        </div>
+      </div>
+
+      <div class="actions">
+        <input class="client" id="clientName" type="text" placeholder="Your name or business (optional)" aria-label="Your name or business">
+        <button class="btn btn-wa" type="button" id="waBtn">Send PDF invoice on WhatsApp</button>
+        <button class="btn btn-ghost" type="button" id="pdfBtn">Download PDF invoice</button>
+        <input class="client" id="clientEmail" type="email" inputmode="email" autocomplete="email" placeholder="Your email, to get a copy (optional)" aria-label="Your email">
+        <button class="btn btn-ghost" type="button" id="emailBtn">Email me the invoice</button>
+        <p class="note">Payments by M-Pesa. Your site goes live once fully paid.</p>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+<div class="modal" id="modal" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+    <h2 id="mTitle">Your invoice is ready</h2>
+    <ol class="steps" id="mSteps"></ol>
+    <div class="imgbox"><img id="mImg" alt="Invoice preview"></div>
+    <div class="actions">
+      <button class="btn btn-ghost" type="button" id="mPdf">Download PDF invoice</button>
+      <p class="note" id="mStatus" aria-live="polite"></p>
+      <a class="btn btn-wa" id="mGo" href="#" target="_blank" rel="noopener">Open WhatsApp chat with Lewis</a>
+      <button class="btn btn-ghost" type="button" id="mClose">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const WHATSAPP="254116227813";
+const MY_EMAIL="waithakalewis3@gmail.com";
+const PAY={bank:"Equity Bank",paybill:"247247",account:"1330186554087",name:"Lewis Waithaka Kimunyi"};
+const QUOTE_NO="LW-"+new Date().toISOString().slice(2,10).replace(/-/g,"")+"-"+Math.floor(100+Math.random()*900);
+const DEFAULTS={
+  packages:[
+    {id:"starter",name:"Starter",desc:"One page with your services, contact, map and reviews. Great for individuals and small shops.",price:10000,days:5},
+    {id:"business",name:"Business",tag:"Most popular",desc:"Up to 5 pages: home, about, services, gallery and contact, plus Google Business Profile setup.",price:20000,days:10},
+    {id:"premium",name:"Premium",desc:"Business package plus a booking system, a product catalogue and a dashboard to update them yourself.",price:40000,days:15}
+  ],
+  pagePrice:1500,
+  addons:[
+    {id:"gbp",name:"Google Business Profile setup",sub:"Show up on Google Maps and Search",price:2500,skipFor:["business","premium"]},
+    {id:"logo",name:"Logo design",sub:"2 concepts, 2 revisions, PNG and SVG files",price:3000},
+    {id:"copy",name:"Writing the website content",sub:"I write the text for every page",price:4000,starterPrice:2500},
+    {id:"booking",name:"Booking system",sub:"Clients pick a service, date and time, and you get notified on WhatsApp or email",price:10000,skipFor:["premium"]},
+    {id:"catalogue",name:"Product catalogue",sub:"Products with photos and prices, plus an Order on WhatsApp button",price:8000,skipFor:["premium"]},
+    {id:"mpesa",name:"Pay with M-Pesa button",sub:"Your Till/Paybill or a payment link on the site",price:1500},
+    {id:"paystack",name:"Full M-Pesa and card checkout",sub:"Paystack checkout. Paystack charges 1.5% per M-Pesa payment",price:8000},
+    {id:"admin",name:"Admin dashboard",sub:"Update photos, products and prices yourself",price:8000,skipFor:["premium"]}
+  ],
+  domain:1500,
+  plans:[
+    {id:"none",name:"No plan",sub:"Pay per change when you need one",price:0},
+    {id:"basic",name:"Basic care",sub:"Up to 3 small edits a month, backups",price:1500},
+    {id:"standard",name:"Standard care",sub:"Up to 8 edits a month, backups, a monthly check and a Google profile post",price:3000}
+  ]
+};
+const KEY="lewaki-calc-prices-v5";
+let cfg=load();
+const state={pkg:"business",extra:[],addons:new Set(),plan:"basic",six:false};
+const DISC=0.10;
+
+function load(){try{const s=localStorage.getItem(KEY);if(s)return JSON.parse(s)}catch(e){}return structuredClone(DEFAULTS)}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(cfg))}catch(e){}}
+const kes=n=>"KES "+Math.round(n).toLocaleString("en-KE");
+const priceOf=a=>(a.starterPrice&&state.pkg==="starter")?a.starterPrice:a.price;
+
+function priceField(obj,label,shownPrice){
+  return `<span class="price shown">${kes(shownPrice??obj.price)}</span>
+  <input class="edit" type="number" min="0" step="500" value="${shownPrice??obj.price}" aria-label="Price for ${label}" data-ref="${obj.id}">`;
+}
+
+function render(){
+  document.body.dataset.pkg=state.pkg;
+  const ap=id=>(cfg.addons.find(a=>a.id===id)||{price:0}).price;
+  const biz=cfg.packages.find(p=>p.id==="business").price;
+  const worth=biz+ap("booking")+ap("catalogue")+ap("admin");
+  document.getElementById("pkgs").innerHTML=cfg.packages.map(p=>{
+    const tag=p.id==="premium"&&worth>p.price?`Save ${kes(worth-p.price)}`:p.tag;
+    return `
+    <label class="pkg" data-id="${p.id}"><input type="radio" name="pkg" value="${p.id}" ${state.pkg===p.id?"checked":""}>
+      <div class="pkg-top"><span class="pkg-name">${p.name}${tag?`<span class="tag">${tag}</span>`:""}</span>${priceField(p,p.name)}</div>
+      <p class="pkg-desc">${p.desc}${p.id==="premium"&&worth>p.price?` Worth ${kes(worth)} if added separately.`:""}</p><p class="pkg-days">Ready in ${p.days} days</p></label>`}).join("");
+
+  document.getElementById("addons").innerHTML=cfg.addons.map(a=>{
+    const inc=(a.skipFor||[]).includes(state.pkg);
+    const sub=a.id==="copy"&&state.pkg==="starter"?"I write the text for your page":a.sub;
+    return `<div class="row"><label><input type="checkbox" value="${a.id}" ${inc?"disabled checked":state.addons.has(a.id)?"checked":""}>
+      <span>${a.name}<span class="sub ${inc?"incl":""}">${inc?"Included in your package":sub}</span></span></label>${inc?'<span class="price incl">Included</span>':priceField(a,a.name,priceOf(a))}</div>`;
+  }).join("");
+
+  document.getElementById("plans").innerHTML=cfg.plans.map(p=>`
+    <div class="row"><label><input type="radio" name="plan" value="${p.id}" ${state.plan===p.id?"checked":""}>
+      <span>${p.name}<span class="sub">${p.sub}</span>${p.price?`<span class="sub save">6 months upfront: ${kes(p.price*6*(1-DISC))}, save ${kes(p.price*6*DISC)}</span>`:""}</span></label>${p.price?priceField(p,p.name):'<span class="price">—</span>'}</div>`).join("")
+    +`<div class="row"><label><input type="checkbox" id="sixMonths" ${state.six?"checked":""} ${state.plan==="none"?"disabled":""}>
+      <span>Pay 6 months upfront<span class="sub">Get 10% off your care plan</span></span></label></div>`
+    +`<div class="row"><span>Domain name (.co.ke)<span class="sub">Renewed every year</span></span><span class="price shown">${kes(cfg.domain)}</span>
+      <input class="edit" type="number" min="0" step="100" value="${cfg.domain}" aria-label="Domain price per year" id="domainEdit"></div>`;
+
+  document.getElementById("pagePriceShown").textContent=kes(cfg.pagePrice);
+  document.getElementById("pagePriceEdit").value=cfg.pagePrice;
+  renderPages();
+  calc();
+}
+
+function items(){
+  const pkg=cfg.packages.find(p=>p.id===state.pkg);
+  const list=[[pkg.name+" package",pkg.price]];
+  state.extra.forEach(n=>list.push([n.trim()?`${n.trim()} page`:"Extra page",cfg.pagePrice]));
+  cfg.addons.forEach(a=>{if(state.addons.has(a.id)&&!(a.skipFor||[]).includes(state.pkg))list.push([a.name,priceOf(a)])});
+  return list;
+}
+function schedule(total){
+  if(state.pkg==="premium"){
+    const a=Math.round(total*.4),b=Math.round(total*.3);
+    return [["Deposit to start (40%)",a],["When you approve the preview (30%)",b],["Before launch (30%)",total-a-b]];
+  }
+  const a=Math.round(total/2);
+  return [["Deposit to start (50%)",a],["Before launch (50%)",total-a]];
+}
+
+function calc(){
+  const list=items();
+  const total=list.reduce((s,[,v])=>s+v,0);
+  const plan=cfg.plans.find(p=>p.id===state.plan);
+  const pkg=cfg.packages.find(p=>p.id===state.pkg);
+  document.getElementById("slipPkg").textContent=pkg.name+" website quote";
+  document.getElementById("qDays").textContent=pkg.days+" days";
+  document.getElementById("lines").innerHTML=list.map(([n,v])=>`<div class="line"><span>${n}</span><span>${kes(v)}</span></div>`).join("");
+  document.getElementById("total").textContent=kes(total);
+  document.getElementById("pay").innerHTML=schedule(total).map(([n,v])=>`<div class="line"><span>${n}</span><span>${kes(v)}</span></div>`).join("");
+  document.getElementById("domain").textContent=kes(cfg.domain);
+  document.getElementById("care").innerHTML=careLines(plan).map(([n,v,c])=>`<div class="line${c?" "+c:""}"><span>${n}</span><span>${v}</span></div>`).join("");
+  if(typeof schedulePrep==="function")schedulePrep();
+  const who=document.getElementById("clientName").value.trim();
+  document.getElementById("qClientRow").hidden=!who;
+  document.getElementById("qClient").textContent=who;
+}
+
+function careLines(plan){
+  if(!plan.price)return [["Care plan","None"]];
+  if(!state.six)return [["Care plan, monthly",kes(plan.price)]];
+  const full=plan.price*6;
+  return [["Care plan, 6 months upfront",kes(full*(1-DISC))],["Instead of",kes(full),"strike"],["You save",kes(full*DISC),"saved"]];
+}
+function quoteText(){
+  const list=items(), total=list.reduce((t,[,v])=>t+v,0);
+  const plan=cfg.plans.find(p=>p.id===state.plan);
+  const pkg=cfg.packages.find(p=>p.id===state.pkg);
+  const who=document.getElementById("clientName").value.trim();
+  const date=new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"});
+  const bar="━━━━━━━━━━━━━━";
+  const r=[
+    "🧾 *WEBSITE QUOTE RECEIPT*",
+    "*Lewis Waithaka*, Web designer",
+    bar,
+    `*Quote no:* ${QUOTE_NO}`,
+    `*Date:* ${date}`,
+  ];
+  if(who) r.push(`*Client:* ${who}`);
+  r.push(`*Package:* ${pkg.name}`, `*Delivery:* ${pkg.days} days`, bar, "*ITEMS*");
+  list.forEach(([n,v])=>r.push(`▪️ ${n}: ${kes(v)}`));
+  r.push(bar, `💰 *TOTAL: ${kes(total)}*`, bar, "*PAYMENT PLAN*");
+  schedule(total).forEach(([n,v],i)=>r.push(`${["1️⃣","2️⃣","3️⃣"][i]} ${n}: *${kes(v)}*`));
+  r.push(bar, "*YEARLY AND MONTHLY*", `🌐 Domain: ${kes(cfg.domain)} per year`);
+  if(!plan.price) r.push("🛠️ Care plan: None");
+  else if(state.six){
+    const f=plan.price*6;
+    r.push(`🛠️ ${plan.name}, 6 months upfront: *${kes(f*(1-DISC))}*`, `      Instead of ${kes(f)}, you save *${kes(f*DISC)}*`);
+  } else r.push(`🛠️ ${plan.name}: ${kes(plan.price)} per month`);
+  r.push(bar, "*HOW TO PAY (M-PESA)*",
+    `Paybill: *${PAY.paybill}*`,
+    `Account no: *${PAY.account}*`,
+    `Bank: ${PAY.bank}`,
+    `Name: ${PAY.name}`,
+    bar,
+    "✅ Site goes live once fully paid",
+    "⏱️ Timeline starts once the deposit is paid",
+    "📅 Quote valid for 14 days",
+    bar,
+    "Thank you for your business! 🙏");
+  return r.join("\n");
+}
+const PKG_COLORS={starter:"#0E9384",business:"#6941C6",premium:"#E07B00"};
+async function receiptCanvas(){
+  try{await document.fonts.ready}catch(e){}
+  const S=2,W=540,P=30,M=18,MONO='"Space Mono", ui-monospace, monospace',SANS='"Bricolage Grotesque", system-ui, sans-serif';
+  const list=items(),total=list.reduce((t,[,v])=>t+v,0);
+  const plan=cfg.plans.find(p=>p.id===state.plan),pkg=cfg.packages.find(p=>p.id===state.pkg);
+  const who=document.getElementById("clientName").value.trim();
+  const date=new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"});
+  const acc=PKG_COLORS[state.pkg];
+  const R=[];
+  R.push({k:"kv",l:"Quote no.",v:QUOTE_NO,m:1},{k:"kv",l:"Date",v:date,m:1},{k:"kv",l:"Delivery",v:pkg.days+" days",m:1});
+  if(who)R.push({k:"kv",l:"Client",v:who,m:1});
+  R.push({k:"sep"});
+  list.forEach(([n,v])=>R.push({k:"kv",l:n,v:kes(v)}));
+  R.push({k:"sep"},{k:"center",t:"One-time total"},{k:"big",t:kes(total)},{k:"sep"});
+  schedule(total).forEach(([n,v])=>R.push({k:"kv",l:n,v:kes(v),b:1}));
+  R.push({k:"sep"},{k:"kv",l:"Domain, yearly",v:kes(cfg.domain)});
+  if(!plan.price)R.push({k:"kv",l:"Care plan",v:"None"});
+  else if(state.six){const f=plan.price*6;R.push({k:"kv",l:plan.name+", 6 months upfront",v:kes(f*(1-DISC))},{k:"kv",l:"Instead of",v:kes(f),st:1},{k:"kv",l:"You save",v:kes(f*DISC),sv:1})}
+  else R.push({k:"kv",l:plan.name+", monthly",v:kes(plan.price)});
+  R.push({k:"sep"},{k:"title",t:"How to pay (M-Pesa)"},
+    {k:"kv",l:"Paybill",v:PAY.paybill},{k:"kv",l:"Bank",v:PAY.bank},{k:"kv",l:"Account no.",v:PAY.account},{k:"kv",l:"Name",v:PAY.name},
+    {k:"sep"},{k:"center",t:"Your site goes live once fully paid."},{k:"center",t:"Timeline starts once the deposit is paid."},{k:"center",t:"Quote valid for 14 days."},{k:"center",t:"WhatsApp 0116227813"});
+
+  const c=document.createElement("canvas"),x=c.getContext("2d");
+  const inner=W-2*P;
+  const wrap=(t,maxW)=>{const out=[];let cur="";t.split(" ").forEach(w=>{const tr=cur?cur+" "+w:w;if(x.measureText(tr).width>maxW&&cur){out.push(cur);cur=w}else cur=tr});out.push(cur);return out};
+  // measure
+  const HEAD=92,LH=24;
+  let h=HEAD+22;
+  R.forEach(r=>{
+    if(r.k==="kv"){x.font=`${r.b?"700 ":""}15px ${MONO}`;const vw=x.measureText(r.v).width;x.font=`15px ${MONO}`;r.lines=wrap(r.l,inner-vw-14);r.h=r.lines.length*LH+4}
+    else if(r.k==="sep")r.h=22;else if(r.k==="big")r.h=58;else if(r.k==="title")r.h=28;else r.h=24;
+    h+=r.h});
+  h+=30;
+  const CW=W+2*M,CH=h+2*M+8;
+  c.width=CW*S;c.height=CH*S;x.scale(S,S);
+  x.fillStyle="#EEF1F6";x.fillRect(0,0,CW,CH);
+  // receipt body
+  x.fillStyle="#FFFFFF";x.beginPath();
+  if(x.roundRect)x.roundRect(M,M,W,h,[16,16,0,0]);else x.rect(M,M,W,h);
+  x.fill();
+  // scalloped bottom
+  x.fillStyle="#EEF1F6";
+  for(let cx=M+9;cx<M+W;cx+=18){x.beginPath();x.arc(cx,M+h,7,0,Math.PI*2);x.fill()}
+  // header band
+  x.fillStyle=acc;x.beginPath();
+  if(x.roundRect)x.roundRect(M,M,W,HEAD,[16,16,0,0]);else x.rect(M,M,W,HEAD);
+  x.fill();
+  x.fillStyle="#FFFFFF";x.textAlign="center";x.textBaseline="alphabetic";
+  x.font=`800 26px ${SANS}`;x.fillText("Lewis Waithaka",M+W/2,M+42);
+  x.font=`15px ${MONO}`;x.fillText(pkg.name+" website quote",M+W/2,M+70);
+  // rows
+  let y=M+HEAD+22;const L=M+P,Rt=M+W-P;
+  R.forEach(r=>{
+    x.textAlign="left";
+    if(r.k==="kv"){
+      x.fillStyle=r.m?"#5B6475":r.sv?"#0E7A6E":"#1C2333";
+      x.font=`${r.sv?"700 ":""}${r.m?13:15}px ${MONO}`;
+      r.lines.forEach((t,i)=>x.fillText(t,L,y+18+i*LH));
+      x.textAlign="right";
+      x.font=`${(r.b||r.sv)?"700 ":""}${r.m?13:15}px ${MONO}`;
+      x.fillStyle=r.st?"#7A8394":r.sv?"#0E7A6E":r.m?"#5B6475":"#1C2333";
+      x.fillText(r.v,Rt,y+18);
+      if(r.st){const vw=x.measureText(r.v).width;x.fillRect(Rt-vw,y+13,vw,1.5)}
+    }else if(r.k==="sep"){
+      x.strokeStyle="#A3AAB8";x.setLineDash([4,4]);x.lineWidth=1;x.beginPath();x.moveTo(L,y+11);x.lineTo(Rt,y+11);x.stroke();x.setLineDash([]);
+    }else if(r.k==="center"){
+      x.textAlign="center";x.fillStyle="#5B6475";x.font=`13px ${MONO}`;x.fillText(r.t,M+W/2,y+17);
+    }else if(r.k==="big"){
+      x.textAlign="center";x.fillStyle=acc;x.font=`800 44px ${SANS}`;x.fillText(r.t,M+W/2,y+46);
+    }else if(r.k==="title"){
+      x.fillStyle="#1C2333";x.font=`700 15px ${MONO}`;x.fillText(r.t,L,y+19);
+    }
+    y+=r.h;
+  });
+  return c;
+}
+
+let cache={key:null},prepT=null,prepP=null;
+const keyNow=()=>quoteText()+"|"+(document.getElementById("clientEmail")?.value||"").trim();
+function schedulePrep(){clearTimeout(prepT);prepT=setTimeout(()=>{prepare()},300)}
+async function prepare(){
+  const key=keyNow();
+  if(cache.key===key)return cache;
+  if(prepP&&prepP.key===key)return prepP.p;
+  const p=(async()=>{
+    const inv=await invoiceCanvas();
+    const out={key,inv,pdf:new File([canvasToPdf(inv)],`Invoice-${QUOTE_NO}.pdf`,{type:"application/pdf"})};
+    if(keyNow()===key)cache=out;
+    return out;
+  })();
+  prepP={key,p};
+  return p;
+}
+async function invoiceCanvas(){
+  try{await document.fonts.ready}catch(e){}
+  const W=595,S=2.5,M=40,SANS='"Bricolage Grotesque", system-ui, -apple-system, "Segoe UI", sans-serif';
+  const list=items(),total=list.reduce((t,[,v])=>t+v,0);
+  const plan=cfg.plans.find(p=>p.id===state.plan),pkg=cfg.packages.find(p=>p.id===state.pkg);
+  const who=document.getElementById("clientName").value.trim();
+  const email=(document.getElementById("clientEmail").value||"").trim();
+  const acc=PKG_COLORS[state.pkg];
+  const fmt=d=>d.toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"});
+  const today=new Date(),valid=new Date(Date.now()+14*864e5);
+  const INK="#101828",MUT="#667085",LINE="#EAECF0";
+  // table rows
+  const rows=[{t:`${pkg.name} website package`,sub:pkg.desc,q:1,u:pkg.price}];
+  if(state.extra.length)rows.push({t:"Extra pages",sub:state.extra.map(n=>n.trim()||"Unnamed page").join(", "),q:state.extra.length,u:cfg.pagePrice});
+  cfg.addons.forEach(a=>{if(state.addons.has(a.id)&&!(a.skipFor||[]).includes(state.pkg))rows.push({t:a.name,sub:a.sub,q:1,u:priceOf(a)})});
+  (pkg.id!=="starter")&&cfg.addons.filter(a=>(a.skipFor||[]).includes(state.pkg)).forEach(a=>rows.push({t:a.name,sub:"Included in your package",q:1,u:0,inc:1}));
+
+  function draw(x,H){
+    const t=(str,px,X,Y,o={})=>{x.font=`${o.w||400} ${px}px ${SANS}`;x.fillStyle=o.c||INK;x.textAlign=o.a||"left";x.fillText(str,X,Y)};
+    const wrap=(str,px,maxW,w)=>{x.font=`${w||400} ${px}px ${SANS}`;const out=[];let cur="";String(str).split(" ").forEach(word=>{const tr=cur?cur+" "+word:word;if(x.measureText(tr).width>maxW&&cur){out.push(cur);cur=word}else cur=tr});if(cur)out.push(cur);return out};
+    const rr=(X,Y,w,h,r,fill)=>{x.fillStyle=fill;x.beginPath();if(x.roundRect)x.roundRect(X,Y,w,h,r);else x.rect(X,Y,w,h);x.fill()};
+    const hr=(Y,c)=>{x.fillStyle=c||LINE;x.fillRect(M,Y,W-2*M,1)};
+    x.fillStyle="#FFFFFF";x.fillRect(0,0,W,H);
+    x.fillStyle=acc;x.fillRect(0,0,W,6);
+    // header left
+    x.fillStyle="#0E9384";x.fillRect(M,40,5,15);x.fillStyle="#6941C6";x.fillRect(M+7,44,5,11);x.fillStyle="#E07B00";x.fillRect(M+14,37,5,18);
+    t("Lewis Waithaka",19,M+26,54,{w:800});
+    t("Web designer",10,M,76,{c:MUT});
+    t("Nairobi, Kenya",9,M,92,{c:MUT});t(MY_EMAIL,9,M,105,{c:MUT});t("WhatsApp 0116227813",9,M,118,{c:MUT});
+    // header right
+    t("INVOICE",26,W-M,58,{w:800,a:"right",c:acc});
+    x.font=`700 8px ${SANS}`;const pw=x.measureText("UNPAID").width+16;
+    rr(W-M-pw,66,pw,16,8,"#FEF3F2");t("UNPAID",8,W-M-pw/2,77,{w:700,c:"#B42318",a:"center"});
+    const meta=[["Invoice no.",QUOTE_NO],["Date issued",fmt(today)],["Valid until",fmt(valid)],["Delivery",pkg.days+" days after deposit"]];
+    meta.forEach(([l,v],i)=>{t(l,9,W-M-185,100+i*14,{c:MUT});t(v,9,W-M,100+i*14,{a:"right",w:600})});
+    hr(165);
+    // billed to / pay to
+    let y=188;
+    t("Billed to",9,M,y,{w:700,c:MUT});t("Pay to",9,W/2+10,y,{w:700,c:MUT});
+    t(who||"Client",12,M,y+17,{w:700});if(email)t(email,9.5,M,y+31,{c:MUT});
+    t(PAY.name,12,W/2+10,y+17,{w:700});
+    t(`${PAY.bank}, M-Pesa Paybill ${PAY.paybill}`,9.5,W/2+10,y+31,{c:MUT});
+    t(`Account no. ${PAY.account}`,9.5,W/2+10,y+44,{c:MUT});
+    // table
+    y=252;
+    const cQ=372,cU=462,cA=W-M-10;
+    rr(M,y,W-2*M,24,4,"#F2F4F7");
+    t("Description",9,M+10,y+15.5,{w:700,c:MUT});t("Qty",9,cQ,y+15.5,{w:700,c:MUT,a:"right"});
+    t("Unit price",9,cU,y+15.5,{w:700,c:MUT,a:"right"});t("Amount",9,cA,y+15.5,{w:700,c:MUT,a:"right"});
+    y+=24;
+    rows.forEach(r=>{
+      const subL=wrap(r.sub||"",8.5,cQ-M-60);
+      const h=22+subL.length*11+6;
+      t(r.t,10.5,M+10,y+17,{w:600});
+      subL.forEach((ln,i)=>t(ln,8.5,M+10,y+30+i*11,{c:MUT}));
+      t(String(r.q),10,cQ,y+17,{a:"right"});
+      t(r.inc?"—":kes(r.u),10,cU,y+17,{a:"right"});
+      t(r.inc?"Included":kes(r.u*r.q),10,cA,y+17,{a:"right",w:600,c:r.inc?"#0E9384":INK});
+      y+=h;hr(y);
+    });
+    // totals
+    y+=14;
+    t("Subtotal",10,cU-60,y,{c:MUT,a:"right"});t(kes(total),10,cA,y,{a:"right"});
+    y+=10;rr(cU-150,y,cA+10-(cU-150),30,6,acc);
+    t("Total due",11,cU-140,y+19.5,{w:700,c:"#FFFFFF"});t(kes(total),13,cA,y+20,{w:800,a:"right",c:"#FFFFFF"});
+    y+=52;
+    // payment schedule + recurring (two columns)
+    const colW=(W-2*M-20)/2,c2=M+colW+20;
+    t("Payment schedule",11,M,y,{w:700});t("Ongoing costs",11,c2,y,{w:700});
+    let yl=y+8,yr=y+8;
+    schedule(total).forEach(([n,v])=>{yl+=18;t(n,9.5,M,yl,{c:MUT});t(kes(v),9.5,M+colW,yl,{a:"right",w:700});x.fillStyle=LINE;x.fillRect(M,yl+6,colW,1)});
+    const ongo=[["Domain name (.co.ke)",kes(cfg.domain)+" / year"]];
+    if(!plan.price)ongo.push(["Care plan","None"]);
+    else if(state.six){const f=plan.price*6;ongo.push([plan.name+", 6 months",kes(f*(1-DISC))],["You save (10% off)",kes(f*DISC)])}
+    else ongo.push([plan.name,kes(plan.price)+" / month"]);
+    ongo.forEach(([n,v],i)=>{yr+=18;const sv=n.startsWith("You save");t(n,9.5,c2,yr,{c:sv?"#0E7A6E":MUT,w:sv?700:400});t(v,9.5,c2+colW,yr,{a:"right",w:700,c:sv?"#0E7A6E":INK});x.fillStyle=LINE;x.fillRect(c2,yr+6,colW,1)});
+    y=Math.max(yl,yr)+30;
+    // how to pay box
+    const steps=["Open M-Pesa and choose Lipa na M-Pesa, then Pay Bill",`Business no.: ${PAY.paybill}`,`Account no.: ${PAY.account}`,"Enter the amount due for this stage","Check the details show Equity Bank, then enter your PIN","Send the M-Pesa confirmation message to WhatsApp 0116227813"];
+    const boxH=34+steps.length*15+8;
+    x.fillStyle=acc;x.globalAlpha=.08;x.fillRect(M,y,W-2*M,boxH);x.globalAlpha=1;
+    x.fillStyle=acc;x.fillRect(M,y,4,boxH);
+    t("How to pay with M-Pesa",11,M+16,y+21,{w:700});
+    steps.forEach((s2,i)=>{t(`${i+1}.`,9.5,M+16,y+40+i*15,{w:700,c:acc});t(s2,9.5,M+32,y+40+i*15,{w:(i===1||i===2)?700:400})});
+    y+=boxH+24;
+    // terms
+    t("Terms",11,M,y,{w:700});
+    ["Work starts once the deposit is paid. Delivery time counts from that day.","Your website goes live once the full amount is paid.","This invoice is valid for 14 days from the date issued.","Prices are in Kenya Shillings (KES)."].forEach((s2,i)=>t("•  "+s2,9,M,y+17+i*13,{c:MUT}));
+    y+=17+4*13+26;
+    hr(y);
+    t("Thank you for your business!",11,W/2,y+22,{w:700,a:"center",c:acc});
+    t(`Lewis Waithaka, Web designer  |  ${MY_EMAIL}  |  WhatsApp 0116227813`,8.5,W/2,y+37,{a:"center",c:MUT});
+    return y+56;
+  }
+  const probe=document.createElement("canvas").getContext("2d");
+  const need=draw(probe,842);
+  const H=Math.max(842,Math.ceil(need));
+  const c=document.createElement("canvas");c.width=Math.round(W*S);c.height=Math.round(H*S);
+  const x=c.getContext("2d");x.scale(S,S);draw(x,H);
+  return c;
+}
+function canvasToPdf(canvas){
+  const jpg=atob(canvas.toDataURL("image/jpeg",0.92).split(",")[1]);
+  const img=new Uint8Array(jpg.length);for(let i=0;i<jpg.length;i++)img[i]=jpg.charCodeAt(i);
+  const pw=595.28,ph=+(pw*canvas.height/canvas.width).toFixed(2);
+  const enc=new TextEncoder(),parts=[],offs=[];let len=0;
+  const push=b=>{const u=typeof b==="string"?enc.encode(b):b;parts.push(u);len+=u.length};
+  const content=`q ${pw} 0 0 ${ph} 0 0 cm /Im0 Do Q`;
+  push("%PDF-1.4\n%\xE2\xE3\xCF\xD3\n");
+  const obj=(n,body)=>{offs[n]=len;push(`${n} 0 obj\n`);body();push("\nendobj\n")};
+  obj(1,()=>push("<< /Type /Catalog /Pages 2 0 R >>"));
+  obj(2,()=>push("<< /Type /Pages /Kids [3 0 R] /Count 1 >>"));
+  obj(3,()=>push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pw} ${ph}] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>`));
+  obj(4,()=>{push(`<< /Type /XObject /Subtype /Image /Width ${canvas.width} /Height ${canvas.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${img.length} >>\nstream\n`);push(img);push("\nendstream")});
+  obj(5,()=>push(`<< /Length ${content.length} >>\nstream\n${content}\nendstream`));
+  obj(6,()=>push(`<< /Title (Invoice ${QUOTE_NO}) /Author (Lewis Waithaka) >>`));
+  const xref=len;
+  let xr="xref\n0 7\n0000000000 65535 f \n";for(let n=1;n<=6;n++)xr+=String(offs[n]).padStart(10,"0")+" 00000 n \n";
+  push(xr+`trailer\n<< /Size 7 /Root 1 0 R /Info 6 0 R >>\nstartxref\n${xref}\n%%EOF`);
+  return new Blob(parts,{type:"application/pdf"});
+}
+let DL=null,dlP=null;
+const IN_FRAME=(()=>{try{return window.self!==window.top}catch(e){return true}})();
+function getDL(){
+  if(DL)return Promise.resolve(DL);
+  if(!IN_FRAME)return Promise.resolve(null);
+  if(!dlP)dlP=(async()=>{
+    const t0=Date.now();
+    while(!(window.claude&&window.claude.use)&&Date.now()-t0<4000)await new Promise(r=>setTimeout(r,100));
+    if(!(window.claude&&window.claude.use))return null;
+    try{DL=await Promise.race([window.claude.use("downloads"),new Promise(r=>setTimeout(()=>r(null),6000))])}catch(e){DL=null}
+    if(!DL)dlP=null; // allow a fresh try on the next tap
+    return DL;
+  })();
+  return dlP;
+}
+getDL();
+// result: saved | started | declined | busy | unavailable
+async function saveFile(file){
+  if(!IN_FRAME){
+    const url=URL.createObjectURL(file);const a=document.createElement("a");a.href=url;a.download=file.name;
+    document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),10000);
+    return "started";
+  }
+  const dl=await getDL();
+  if(!dl)return "unavailable";
+  try{await dl.save({filename:file.name,data:file});return "saved"}
+  catch(e){const c=e&&e.code;return c==="declined"?"declined":c==="rate_limited"?"busy":"unavailable"}
+}
+const SAVE_MSG={
+  saved:"Invoice PDF saved. Check your Downloads or Files.",
+  started:"Downloading the invoice PDF. Check your Downloads.",
+  declined:"Download cancelled.",
+  busy:"Please try again in a moment.",
+  unavailable:"Downloads are blocked in this preview. Open the calculator in your phone's browser to download the PDF."
+};
+async function shareFile(file,title,text){
+  if(!(navigator.canShare&&navigator.canShare({files:[file]})))return "unsupported";
+  try{await navigator.share({files:[file],title,text});return "shared"}
+  catch(e){return e&&e.name==="AbortError"?"cancelled":"unsupported"}
+}
+async function busy(btn,fn){
+  const label=btn.textContent;
+  if(cache.key!==keyNow()){btn.disabled=true;btn.textContent="Preparing invoice…"}
+  try{const ready=cache.key===keyNow()?cache:await prepare();await fn(ready)}
+  catch(e){toast("Couldn't create the invoice. Please try again.")}
+  finally{btn.disabled=false;btn.textContent=label}
+}
+function showGuide(ready,title,steps,goLabel,goHref){
+  document.getElementById("mTitle").textContent=title;
+  document.getElementById("mSteps").innerHTML=steps.map(t=>`<li>${t}</li>`).join("");
+  document.getElementById("mImg").src=ready.inv.toDataURL("image/jpeg",0.85);
+  document.getElementById("mStatus").textContent="";
+  const go=document.getElementById("mGo");go.textContent=goLabel;go.href=goHref;
+  document.getElementById("modal").hidden=false;
+  document.querySelector(".sheet").scrollTop=0;
+}
+const pdfName=()=>`Invoice-${QUOTE_NO}.pdf`;
+async function downloadPdf(btn,statusEl){
+  await busy(btn,async ready=>{
+    const r=await saveFile(ready.pdf);
+    if(statusEl)statusEl.textContent=SAVE_MSG[r];else toast(SAVE_MSG[r]);
+  });
+}
+async function sendWhatsApp(btn){
+  await busy(btn,async ready=>{
+    const r=await shareFile(ready.pdf,`Invoice ${QUOTE_NO}`,`Website invoice ${QUOTE_NO} for Lewis Waithaka`);
+    if(r==="shared"||r==="cancelled")return;
+    const msg=`Hi Lewis, I'm sending you my website invoice ${QUOTE_NO} as a PDF.`;
+    showGuide(ready,"Send the PDF invoice to Lewis",[
+      "Tap <strong>Download PDF invoice</strong> below.",
+      "Tap <strong>Open WhatsApp chat with Lewis</strong>.",
+      `Tap 📎, choose <strong>Document</strong>, pick <strong>${pdfName()}</strong> and send.`
+    ],"Open WhatsApp chat with Lewis",`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(msg)}`);
+  });
+}
+async function emailInvoice(btn){
+  const to=(document.getElementById("clientEmail").value||"").trim();
+  await busy(btn,async ready=>{
+    const pkg=cfg.packages.find(p=>p.id===state.pkg);
+    const subject=`Website invoice ${QUOTE_NO}: ${pkg.name} package from Lewis Waithaka`;
+    const r=await shareFile(ready.pdf,subject,`Website invoice ${QUOTE_NO} from Lewis Waithaka is attached.`);
+    if(r==="shared"||r==="cancelled")return;
+    const body=`Hello,\n\nWebsite invoice ${QUOTE_NO} is attached as a PDF.\n\nReply to this email or WhatsApp 0116227813 to get started.\n\nLewis Waithaka\nWeb designer`;
+    showGuide(ready,"Email the PDF invoice",[
+      "Tap <strong>Download PDF invoice</strong> below.",
+      "Tap <strong>Open email</strong>. The message is ready, with Lewis copied in.",
+      `Attach <strong>${pdfName()}</strong> and send.`
+    ],"Open email",`mailto:${encodeURIComponent(to)}?cc=${encodeURIComponent(MY_EMAIL)}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
+  });
+}
+document.getElementById("pdfBtn").onclick=e=>downloadPdf(e.currentTarget);
+document.getElementById("mPdf").onclick=e=>downloadPdf(e.currentTarget,document.getElementById("mStatus"));
+document.getElementById("waBtn").onclick=e=>sendWhatsApp(e.currentTarget);
+document.getElementById("emailBtn").onclick=e=>emailInvoice(e.currentTarget);
+document.getElementById("mClose").onclick=()=>{document.getElementById("modal").hidden=true};
+document.getElementById("modal").onclick=e=>{if(e.target.id==="modal")e.target.hidden=true};
+document.addEventListener("keydown",e=>{if(e.key==="Escape")document.getElementById("modal").hidden=true});
+
+function toast(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),1800)}
+
+document.addEventListener("change",e=>{
+  const t=e.target;
+  if(t.name==="pkg"){state.pkg=t.value;render();return}
+  if(t.name==="plan"){state.plan=t.value;if(t.value==="none")state.six=false;render();return}
+  if(t.id==="sixMonths"){state.six=t.checked;calc();return}
+  if(t.type==="checkbox"){t.checked?state.addons.add(t.value):state.addons.delete(t.value);calc();return}
+  if(t.classList.contains("edit")){
+    const v=Math.max(0,Number(t.value)||0);
+    if(t.id==="pagePriceEdit")cfg.pagePrice=v;
+    else if(t.id==="domainEdit")cfg.domain=v;
+    else{const ref=t.dataset.ref;[cfg.packages,cfg.addons,cfg.plans].forEach(g=>g.forEach(x=>{if(x.id===ref){if(x.starterPrice&&state.pkg==="starter")x.starterPrice=v;else x.price=v}}))}
+    save();render();
+  }
+});
+const SUGGEST=["Blog","FAQ","Menu","Portfolio","Pricing","Team","Testimonials"];
+const esc=t=>t.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function renderPages(focusLast){
+  const used=new Set(state.extra.map(n=>n.trim().toLowerCase()));
+  document.getElementById("chips").innerHTML=SUGGEST.filter(n=>!used.has(n.toLowerCase())).map(n=>`<button type="button" class="chip" data-add="${n}">+ ${n}</button>`).join("");
+  document.getElementById("pageList").innerHTML=state.extra.map((n,i)=>`<div class="pg">
+    <input type="text" value="${esc(n)}" data-i="${i}" placeholder="Page name, e.g. Blog" aria-label="Extra page ${i+1} name">
+    <span class="price">${kes(cfg.pagePrice)}</span>
+    <button type="button" class="rm" data-rm="${i}" aria-label="Remove this page">×</button></div>`).join("");
+  if(focusLast){const ins=document.querySelectorAll("#pageList input");ins[ins.length-1]?.focus()}
+}
+function addPage(name,focus){if(state.extra.length>=20)return;state.extra.push(name);renderPages(focus);calc()}
+document.getElementById("addPage").onclick=()=>addPage("",true);
+document.getElementById("chips").onclick=e=>{const b=e.target.closest("[data-add]");if(b)addPage(b.dataset.add,false)};
+document.getElementById("pageList").onclick=e=>{const b=e.target.closest("[data-rm]");if(b){state.extra.splice(+b.dataset.rm,1);renderPages();calc()}};
+document.getElementById("pageList").oninput=e=>{const i=e.target.dataset.i;if(i!==undefined){state.extra[+i]=e.target.value;calc()}};
+document.getElementById("clientName").oninput=calc;
+document.getElementById("clientEmail").oninput=()=>schedulePrep();
+if(/edit/i.test(location.hash+location.search))document.body.classList.add("admin");
+(()=>{let taps=0,t;document.querySelector(".brand").addEventListener("click",()=>{taps++;clearTimeout(t);t=setTimeout(()=>taps=0,2500);
+  if(taps>=5){taps=0;const on=document.body.classList.toggle("admin");if(!on)document.body.classList.remove("editing");toast(on?"Price editing unlocked":"Price editing hidden")}})})();
+document.getElementById("editToggle").onclick=e=>{const on=document.body.classList.toggle("editing");e.target.textContent=on?"Done editing":"Edit prices"};
+document.getElementById("reset").onclick=()=>{cfg=structuredClone(DEFAULTS);save();render();toast("Prices reset")};
+
+document.getElementById("qNo").textContent=QUOTE_NO;
+document.getElementById("qDate").textContent=new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"});
+document.getElementById("payPaybill").textContent=PAY.paybill;
+document.getElementById("payBank").textContent=PAY.bank;
+document.getElementById("payAcc").textContent=PAY.account;
+document.getElementById("payName").textContent=PAY.name;
+async function copyText(t){
+  try{await navigator.clipboard.writeText(t);return true}catch(e){}
+  try{const a=document.createElement("textarea");a.value=t;a.setAttribute("readonly","");a.style.position="fixed";a.style.opacity="0";document.body.appendChild(a);a.select();a.setSelectionRange(0,t.length);const ok=document.execCommand("copy");a.remove();return ok}catch(e){return false}
+}
+document.querySelectorAll(".cp").forEach(b=>b.onclick=async()=>{
+  const v=b.dataset.copy==="paybill"?PAY.paybill:PAY.account;
+  if(await copyText(v)){b.textContent="Copied";b.classList.add("done");toast((b.dataset.copy==="paybill"?"Paybill ":"Account number ")+v+" copied");setTimeout(()=>{b.textContent="Copy";b.classList.remove("done")},2000)}
+  else toast("Copy not available. Please type: "+v);
+});
+document.getElementById("copyPay").onclick=async()=>{
+  const t=`M-Pesa payment details\nPaybill: ${PAY.paybill} (${PAY.bank})\nAccount no.: ${PAY.account}\nName: ${PAY.name}`;
+  toast(await copyText(t)?"Payment details copied":"Copy not available here");
+};
+render();
+</script>
+</body>
+</html>

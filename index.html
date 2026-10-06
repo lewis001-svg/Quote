@@ -9,7 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#F4F6FB; --surface:#FFFFFF; --ink:#101828; --muted:#5D6779; --line:#DDE2EC;
+  --bg:#F3F1FA; --glow:22%; --surface:#FFFFFF; --ink:#101828; --muted:#5D6779; --line:#DDE2EC;
   --teal:#0E9384; --violet:#6941C6; --amber:#E07B00; --wa:#25D366; --wa-ink:#06301A;
   --acc:var(--violet);
   --slip:#FFFDF7; --slip-ink:#1C2333;
@@ -19,12 +19,12 @@
 }
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
-    --bg:#0D1220; --surface:#161D2E; --ink:#EEF1F7; --muted:#A1AABD; --line:#2A3348;
+    --bg:#0B0F1E; --glow:34%; --surface:#161D2E; --ink:#EEF1F7; --muted:#A1AABD; --line:#2A3348;
     --teal:#2DC2B0; --violet:#9B7BEA; --amber:#F5A524;
   }
 }
 :root[data-theme="dark"]{
-  --bg:#0D1220; --surface:#161D2E; --ink:#EEF1F7; --muted:#A1AABD; --line:#2A3348;
+  --bg:#0B0F1E; --glow:34%; --surface:#161D2E; --ink:#EEF1F7; --muted:#A1AABD; --line:#2A3348;
   --teal:#2DC2B0; --violet:#9B7BEA; --amber:#F5A524;
 }
 body[data-pkg="starter"]{--acc:var(--teal)}
@@ -32,7 +32,14 @@ body[data-pkg="business"]{--acc:var(--violet)}
 body[data-pkg="premium"]{--acc:var(--amber)}
 *,*::before,*::after{box-sizing:inherit}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
-body{margin:0;background:var(--bg);color:var(--ink);font-family:"Bricolage Grotesque",system-ui,-apple-system,"Segoe UI",sans-serif;font-size:16px;line-height:1.5}
+body{margin:0;background:var(--bg);position:relative;isolation:isolate;color:var(--ink);font-family:"Bricolage Grotesque",system-ui,-apple-system,"Segoe UI",sans-serif;font-size:16px;line-height:1.5}
+body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background:
+    radial-gradient(70vmax 50vmax at -10% -10%,color-mix(in srgb,var(--teal) var(--glow),transparent),transparent 60%),
+    radial-gradient(60vmax 45vmax at 110% 5%,color-mix(in srgb,var(--violet) var(--glow),transparent),transparent 60%),
+    radial-gradient(70vmax 50vmax at 50% 115%,color-mix(in srgb,var(--amber) calc(var(--glow) * .8),transparent),transparent 60%),
+    var(--bg)}
+section,.slip,.sheet{box-shadow:0 1px 2px rgba(16,24,40,.04),0 8px 24px rgba(16,24,40,.06)}
 .wrap{max-width:1040px;margin:0 auto;padding:24px 18px 48px}
 header{margin-bottom:22px}
 .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:1.05rem}
@@ -45,7 +52,8 @@ header{margin-bottom:22px}
 h1{font-size:clamp(1.9rem,6vw,2.8rem);line-height:1.05;margin:12px 0 6px;font-weight:800;letter-spacing:-.02em}
 .lead{color:var(--muted);margin:0;max-width:54ch}
 .grid{display:grid;grid-template-columns:1fr;gap:22px}
-@media(min-width:860px){.grid{grid-template-columns:1.25fr .9fr;align-items:start}.slip-col{position:sticky;top:calc(16px + env(safe-area-inset-top,0px))}}
+@media(min-width:860px){.grid{grid-template-columns:1.25fr .9fr;align-items:start}}
+@media(min-width:860px) and (min-height:1180px){.slip-col{position:sticky;top:calc(16px + env(safe-area-inset-top,0px))}}
 section{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
 h2{font-size:1.15rem;margin:0 0 4px;font-weight:700}
 .hint{color:var(--muted);font-size:.9rem;margin:0 0 14px}
@@ -227,8 +235,6 @@ body.admin .toolbar{display:flex}
         <input class="client" id="clientName" type="text" placeholder="Your name or business (optional)" aria-label="Your name or business">
         <button class="btn btn-wa" type="button" id="waBtn">Send PDF invoice on WhatsApp</button>
         <button class="btn btn-ghost" type="button" id="pdfBtn">Download PDF invoice</button>
-        <input class="client" id="clientEmail" type="email" inputmode="email" autocomplete="email" placeholder="Your email, to get a copy (optional)" aria-label="Your email">
-        <button class="btn btn-ghost" type="button" id="emailBtn">Email me the invoice</button>
         <p class="note">Payments by M-Pesa. Your site goes live once fully paid.</p>
       </div>
     </div>
@@ -421,7 +427,7 @@ function quoteText(){
 }
 const PKG_COLORS={starter:"#0E9384",business:"#6941C6",premium:"#E07B00"};
 let cache={key:null},prepT=null,prepP=null;
-const keyNow=()=>quoteText()+"|"+(document.getElementById("clientEmail")?.value||"").trim();
+const keyNow=()=>quoteText();
 function schedulePrep(){clearTimeout(prepT);prepT=setTimeout(()=>{prepare()},300)}
 async function prepare(){
   const key=keyNow();
@@ -438,12 +444,12 @@ async function prepare(){
   return p;
 }
 async function invoiceCanvas(){
-  try{await document.fonts.ready}catch(e){}
-  const W=595,S=2.5,M=40,SANS='"Bricolage Grotesque", system-ui, -apple-system, "Segoe UI", sans-serif';
+  try{await Promise.race([document.fonts.ready,new Promise(r=>setTimeout(r,1200))])}catch(e){}
+  const W=595,S=2,M=40,SANS='"Bricolage Grotesque", system-ui, -apple-system, "Segoe UI", sans-serif';
   const list=items(),total=list.reduce((t,[,v])=>t+v,0);
   const plan=cfg.plans.find(p=>p.id===state.plan),pkg=cfg.packages.find(p=>p.id===state.pkg);
   const who=document.getElementById("clientName").value.trim();
-  const email=(document.getElementById("clientEmail").value||"").trim();
+  const email="";
   const acc=PKG_COLORS[state.pkg];
   const fmt=d=>d.toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"});
   const today=new Date(),valid=new Date(Date.now()+14*864e5);
@@ -541,7 +547,7 @@ async function invoiceCanvas(){
   return c;
 }
 function canvasToPdf(canvas){
-  const jpg=atob(canvas.toDataURL("image/jpeg",0.92).split(",")[1]);
+  const jpg=atob(canvas.toDataURL("image/jpeg",0.88).split(",")[1]);
   const img=new Uint8Array(jpg.length);for(let i=0;i<jpg.length;i++)img[i]=jpg.charCodeAt(i);
   const pw=595.28,ph=+(pw*canvas.height/canvas.width).toFixed(2);
   const enc=new TextEncoder(),parts=[],offs=[];let len=0;
@@ -635,25 +641,10 @@ async function sendWhatsApp(btn){
     ],"Open WhatsApp chat with Lewis",`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(msg)}`);
   });
 }
-async function emailInvoice(btn){
-  const to=(document.getElementById("clientEmail").value||"").trim();
-  await busy(btn,async ready=>{
-    const pkg=cfg.packages.find(p=>p.id===state.pkg);
-    const subject=`Website invoice ${QUOTE_NO}: ${pkg.name} package from Lewis Waithaka`;
-    const r=await shareFile(ready.pdf,subject,`Website invoice ${QUOTE_NO} from Lewis Waithaka is attached.`);
-    if(r==="shared"||r==="cancelled")return;
-    const body=`Hello,\n\nWebsite invoice ${QUOTE_NO} is attached as a PDF.\n\nReply to this email or WhatsApp 0180627336 to get started.\n\nLewis Waithaka\nWeb designer`;
-    showGuide(ready,"Email the PDF invoice",[
-      "Tap <strong>Download PDF invoice</strong> below.",
-      "Tap <strong>Open email</strong>. The message is ready, with Lewis copied in.",
-      `Attach <strong>${pdfName()}</strong> and send.`
-    ],"Open email",`mailto:${encodeURIComponent(to)}?cc=${encodeURIComponent(MY_EMAIL)}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
-  });
-}
 document.getElementById("pdfBtn").onclick=e=>downloadPdf(e.currentTarget);
 document.getElementById("mPdf").onclick=e=>downloadPdf(e.currentTarget,document.getElementById("mStatus"));
 document.getElementById("waBtn").onclick=e=>sendWhatsApp(e.currentTarget);
-document.getElementById("emailBtn").onclick=e=>emailInvoice(e.currentTarget);
+
 document.getElementById("mClose").onclick=()=>{document.getElementById("modal").hidden=true};
 document.getElementById("modal").onclick=e=>{if(e.target.id==="modal")e.target.hidden=true};
 document.addEventListener("keydown",e=>{if(e.key==="Escape")document.getElementById("modal").hidden=true});
@@ -695,7 +686,7 @@ document.getElementById("pageList").onclick=e=>{const b=e.target.closest("[data-
 document.getElementById("pageList").addEventListener("focusout",renderChips);
 document.getElementById("pageList").oninput=e=>{const i=e.target.dataset.i;if(i!==undefined){state.extra[+i]=e.target.value;calc()}};
 document.getElementById("clientName").oninput=calc;
-document.getElementById("clientEmail").oninput=()=>schedulePrep();
+
 if(/edit/i.test(location.hash+location.search))document.body.classList.add("admin");
 (()=>{let taps=0,t;document.querySelector(".brand").addEventListener("click",()=>{taps++;clearTimeout(t);t=setTimeout(()=>taps=0,2500);
   if(taps>=5){taps=0;const on=document.body.classList.toggle("admin");if(!on)document.body.classList.remove("editing");toast(on?"Price editing unlocked":"Price editing hidden")}})})();

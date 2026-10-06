@@ -110,6 +110,9 @@ body.editing .shown{display:none}
 .cp:focus-visible,.cp-all:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
 .cp-all{display:block;width:100%;margin-top:10px;padding:10px;border:0;border-radius:10px;background:color-mix(in srgb,var(--acc) 14%,#fff);color:var(--slip-ink);font:inherit;font-weight:700;cursor:pointer}
 .cp-note{font-size:.75rem;color:#5b6475;margin:8px 0 0;text-align:center}
+.tip{margin:10px 0 2px;padding:10px 12px;border-radius:10px;background:#FFF4E5;color:#7A3E00;font-family:"Bricolage Grotesque",sans-serif;font-size:.88rem;line-height:1.4}
+.tip button{display:block;margin-top:8px;border:0;border-radius:8px;background:#E07B00;color:#fff;font:inherit;font-weight:700;padding:7px 12px;cursor:pointer}
+.tip button:focus-visible{outline:3px solid #7A3E00;outline-offset:2px}
 .line.meta{color:#5b6475;font-size:.8rem}
 .sep{border-top:1px dashed #a3aab8;margin:10px 0}
 .big{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:clamp(2rem,8vw,2.6rem);line-height:1;text-align:center;margin:8px 0 2px;letter-spacing:-.02em;color:var(--acc)}
@@ -203,6 +206,7 @@ body.admin .toolbar{display:flex}
           <div class="sep"></div>
           <div class="small">One-time total</div>
           <div class="big" id="total">KES 0</div>
+          <div class="tip" id="tip" hidden></div>
           <div class="sep"></div>
           <div class="pay" id="pay"></div>
           <div class="sep"></div>
@@ -246,10 +250,10 @@ body.admin .toolbar{display:flex}
 </div>
 
 <script>
-const WHATSAPP="254116227813";
+const WHATSAPP="254180627336";
 const MY_EMAIL="waithakalewis3@gmail.com";
 const PAY={bank:"Equity Bank",paybill:"247247",account:"1330186554087",name:"Lewis Waithaka Kimunyi"};
-const QUOTE_NO="LW-"+new Date().toISOString().slice(2,10).replace(/-/g,"")+"-"+Math.floor(100+Math.random()*900);
+const QUOTE_NO=(()=>{const d=new Date(),z=n=>String(n).padStart(2,"0");return `LW-${String(d.getFullYear()).slice(2)}${z(d.getMonth()+1)}${z(d.getDate())}-${Math.floor(100+Math.random()*900)}`})();
 const DEFAULTS={
   packages:[
     {id:"starter",name:"Starter",desc:"One page with your services, contact, map and reviews. Great for individuals and small shops.",price:10000,days:5},
@@ -281,6 +285,7 @@ const DISC=0.10;
 
 function load(){try{const s=localStorage.getItem(KEY);if(s)return JSON.parse(s)}catch(e){}return structuredClone(DEFAULTS)}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(cfg))}catch(e){}}
+const escH=t=>String(t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const kes=n=>"KES "+Math.round(n).toLocaleString("en-KE");
 const priceOf=a=>(a.starterPrice&&state.pkg==="starter")?a.starterPrice:a.price;
 
@@ -345,11 +350,25 @@ function calc(){
   const pkg=cfg.packages.find(p=>p.id===state.pkg);
   document.getElementById("slipPkg").textContent=pkg.name+" website quote";
   document.getElementById("qDays").textContent=pkg.days+" days";
-  document.getElementById("lines").innerHTML=list.map(([n,v])=>`<div class="line"><span>${n}</span><span>${kes(v)}</span></div>`).join("");
+  document.getElementById("lines").innerHTML=list.map(([n,v])=>`<div class="line"><span>${escH(n)}</span><span>${kes(v)}</span></div>`).join("");
   document.getElementById("total").textContent=kes(total);
   document.getElementById("pay").innerHTML=schedule(total).map(([n,v])=>`<div class="line"><span>${n}</span><span>${kes(v)}</span></div>`).join("");
   document.getElementById("domain").textContent=kes(cfg.domain);
   document.getElementById("care").innerHTML=careLines(plan).map(([n,v,c])=>`<div class="line${c?" "+c:""}"><span>${n}</span><span>${v}</span></div>`).join("");
+  // suggest Premium when it would cost less for the same features
+  const tip=document.getElementById("tip");
+  if(state.pkg!=="premium"){
+    const prem=cfg.packages.find(p=>p.id==="premium");
+    const prevPkg=state.pkg;state.pkg="premium";
+    const premTotal=items().reduce((t,[,v])=>t+v,0);
+    state.pkg=prevPkg;
+    const premAddons=["booking","catalogue","admin"].filter(id=>state.addons.has(id));
+    if(premAddons.length&&premTotal<total){
+      tip.innerHTML=`Premium already includes bookings, a product catalogue and a dashboard. With Premium, this would cost <strong>${kes(premTotal)}</strong> and save you <strong>${kes(total-premTotal)}</strong>.<button type="button" id="toPremium">Switch to Premium</button>`;
+      tip.hidden=false;
+      document.getElementById("toPremium").onclick=()=>{state.pkg="premium";render()};
+    }else tip.hidden=true;
+  }else tip.hidden=true;
   if(typeof schedulePrep==="function")schedulePrep();
   const who=document.getElementById("clientName").value.trim();
   document.getElementById("qClientRow").hidden=!who;
@@ -401,84 +420,6 @@ function quoteText(){
   return r.join("\n");
 }
 const PKG_COLORS={starter:"#0E9384",business:"#6941C6",premium:"#E07B00"};
-async function receiptCanvas(){
-  try{await document.fonts.ready}catch(e){}
-  const S=2,W=540,P=30,M=18,MONO='"Space Mono", ui-monospace, monospace',SANS='"Bricolage Grotesque", system-ui, sans-serif';
-  const list=items(),total=list.reduce((t,[,v])=>t+v,0);
-  const plan=cfg.plans.find(p=>p.id===state.plan),pkg=cfg.packages.find(p=>p.id===state.pkg);
-  const who=document.getElementById("clientName").value.trim();
-  const date=new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"});
-  const acc=PKG_COLORS[state.pkg];
-  const R=[];
-  R.push({k:"kv",l:"Quote no.",v:QUOTE_NO,m:1},{k:"kv",l:"Date",v:date,m:1},{k:"kv",l:"Delivery",v:pkg.days+" days",m:1});
-  if(who)R.push({k:"kv",l:"Client",v:who,m:1});
-  R.push({k:"sep"});
-  list.forEach(([n,v])=>R.push({k:"kv",l:n,v:kes(v)}));
-  R.push({k:"sep"},{k:"center",t:"One-time total"},{k:"big",t:kes(total)},{k:"sep"});
-  schedule(total).forEach(([n,v])=>R.push({k:"kv",l:n,v:kes(v),b:1}));
-  R.push({k:"sep"},{k:"kv",l:"Domain, yearly",v:kes(cfg.domain)});
-  if(!plan.price)R.push({k:"kv",l:"Care plan",v:"None"});
-  else if(state.six){const f=plan.price*6;R.push({k:"kv",l:plan.name+", 6 months upfront",v:kes(f*(1-DISC))},{k:"kv",l:"Instead of",v:kes(f),st:1},{k:"kv",l:"You save",v:kes(f*DISC),sv:1})}
-  else R.push({k:"kv",l:plan.name+", monthly",v:kes(plan.price)});
-  R.push({k:"sep"},{k:"title",t:"How to pay (M-Pesa)"},
-    {k:"kv",l:"Paybill",v:PAY.paybill},{k:"kv",l:"Bank",v:PAY.bank},{k:"kv",l:"Account no.",v:PAY.account},{k:"kv",l:"Name",v:PAY.name},
-    {k:"sep"},{k:"center",t:"Your site goes live once fully paid."},{k:"center",t:"Timeline starts once the deposit is paid."},{k:"center",t:"Quote valid for 14 days."},{k:"center",t:"WhatsApp 0116227813"});
-
-  const c=document.createElement("canvas"),x=c.getContext("2d");
-  const inner=W-2*P;
-  const wrap=(t,maxW)=>{const out=[];let cur="";t.split(" ").forEach(w=>{const tr=cur?cur+" "+w:w;if(x.measureText(tr).width>maxW&&cur){out.push(cur);cur=w}else cur=tr});out.push(cur);return out};
-  // measure
-  const HEAD=92,LH=24;
-  let h=HEAD+22;
-  R.forEach(r=>{
-    if(r.k==="kv"){x.font=`${r.b?"700 ":""}15px ${MONO}`;const vw=x.measureText(r.v).width;x.font=`15px ${MONO}`;r.lines=wrap(r.l,inner-vw-14);r.h=r.lines.length*LH+4}
-    else if(r.k==="sep")r.h=22;else if(r.k==="big")r.h=58;else if(r.k==="title")r.h=28;else r.h=24;
-    h+=r.h});
-  h+=30;
-  const CW=W+2*M,CH=h+2*M+8;
-  c.width=CW*S;c.height=CH*S;x.scale(S,S);
-  x.fillStyle="#EEF1F6";x.fillRect(0,0,CW,CH);
-  // receipt body
-  x.fillStyle="#FFFFFF";x.beginPath();
-  if(x.roundRect)x.roundRect(M,M,W,h,[16,16,0,0]);else x.rect(M,M,W,h);
-  x.fill();
-  // scalloped bottom
-  x.fillStyle="#EEF1F6";
-  for(let cx=M+9;cx<M+W;cx+=18){x.beginPath();x.arc(cx,M+h,7,0,Math.PI*2);x.fill()}
-  // header band
-  x.fillStyle=acc;x.beginPath();
-  if(x.roundRect)x.roundRect(M,M,W,HEAD,[16,16,0,0]);else x.rect(M,M,W,HEAD);
-  x.fill();
-  x.fillStyle="#FFFFFF";x.textAlign="center";x.textBaseline="alphabetic";
-  x.font=`800 26px ${SANS}`;x.fillText("Lewis Waithaka",M+W/2,M+42);
-  x.font=`15px ${MONO}`;x.fillText(pkg.name+" website quote",M+W/2,M+70);
-  // rows
-  let y=M+HEAD+22;const L=M+P,Rt=M+W-P;
-  R.forEach(r=>{
-    x.textAlign="left";
-    if(r.k==="kv"){
-      x.fillStyle=r.m?"#5B6475":r.sv?"#0E7A6E":"#1C2333";
-      x.font=`${r.sv?"700 ":""}${r.m?13:15}px ${MONO}`;
-      r.lines.forEach((t,i)=>x.fillText(t,L,y+18+i*LH));
-      x.textAlign="right";
-      x.font=`${(r.b||r.sv)?"700 ":""}${r.m?13:15}px ${MONO}`;
-      x.fillStyle=r.st?"#7A8394":r.sv?"#0E7A6E":r.m?"#5B6475":"#1C2333";
-      x.fillText(r.v,Rt,y+18);
-      if(r.st){const vw=x.measureText(r.v).width;x.fillRect(Rt-vw,y+13,vw,1.5)}
-    }else if(r.k==="sep"){
-      x.strokeStyle="#A3AAB8";x.setLineDash([4,4]);x.lineWidth=1;x.beginPath();x.moveTo(L,y+11);x.lineTo(Rt,y+11);x.stroke();x.setLineDash([]);
-    }else if(r.k==="center"){
-      x.textAlign="center";x.fillStyle="#5B6475";x.font=`13px ${MONO}`;x.fillText(r.t,M+W/2,y+17);
-    }else if(r.k==="big"){
-      x.textAlign="center";x.fillStyle=acc;x.font=`800 44px ${SANS}`;x.fillText(r.t,M+W/2,y+46);
-    }else if(r.k==="title"){
-      x.fillStyle="#1C2333";x.font=`700 15px ${MONO}`;x.fillText(r.t,L,y+19);
-    }
-    y+=r.h;
-  });
-  return c;
-}
-
 let cache={key:null},prepT=null,prepP=null;
 const keyNow=()=>quoteText()+"|"+(document.getElementById("clientEmail")?.value||"").trim();
 function schedulePrep(){clearTimeout(prepT);prepT=setTimeout(()=>{prepare()},300)}
@@ -493,6 +434,7 @@ async function prepare(){
     return out;
   })();
   prepP={key,p};
+  p.catch(()=>{if(prepP&&prepP.p===p)prepP=null});
   return p;
 }
 async function invoiceCanvas(){
@@ -523,7 +465,7 @@ async function invoiceCanvas(){
     x.fillStyle="#0E9384";x.fillRect(M,40,5,15);x.fillStyle="#6941C6";x.fillRect(M+7,44,5,11);x.fillStyle="#E07B00";x.fillRect(M+14,37,5,18);
     t("Lewis Waithaka",19,M+26,54,{w:800});
     t("Web designer",10,M,76,{c:MUT});
-    t("Nairobi, Kenya",9,M,92,{c:MUT});t(MY_EMAIL,9,M,105,{c:MUT});t("WhatsApp 0116227813",9,M,118,{c:MUT});
+    t("Nairobi, Kenya",9,M,92,{c:MUT});t(MY_EMAIL,9,M,105,{c:MUT});t("WhatsApp 0180627336",9,M,118,{c:MUT});
     // header right
     t("INVOICE",26,W-M,58,{w:800,a:"right",c:acc});
     x.font=`700 8px ${SANS}`;const pw=x.measureText("UNPAID").width+16;
@@ -534,7 +476,9 @@ async function invoiceCanvas(){
     // billed to / pay to
     let y=188;
     t("Billed to",9,M,y,{w:700,c:MUT});t("Pay to",9,W/2+10,y,{w:700,c:MUT});
-    t(who||"Client",12,M,y+17,{w:700});if(email)t(email,9.5,M,y+31,{c:MUT});
+    const fit=(str,px,w,maxW)=>{x.font=`${w||400} ${px}px ${SANS}`;if(x.measureText(str).width<=maxW)return str;while(str.length>1&&x.measureText(str+"…").width>maxW)str=str.slice(0,-1);return str+"…"};
+    const colMax=W/2-M-16;
+    t(fit(who||"Client",12,700,colMax),12,M,y+17,{w:700});if(email)t(fit(email,9.5,400,colMax),9.5,M,y+31,{c:MUT});
     t(PAY.name,12,W/2+10,y+17,{w:700});
     t(`${PAY.bank}, M-Pesa Paybill ${PAY.paybill}`,9.5,W/2+10,y+31,{c:MUT});
     t(`Account no. ${PAY.account}`,9.5,W/2+10,y+44,{c:MUT});
@@ -573,7 +517,7 @@ async function invoiceCanvas(){
     ongo.forEach(([n,v],i)=>{yr+=18;const sv=n.startsWith("You save");t(n,9.5,c2,yr,{c:sv?"#0E7A6E":MUT,w:sv?700:400});t(v,9.5,c2+colW,yr,{a:"right",w:700,c:sv?"#0E7A6E":INK});x.fillStyle=LINE;x.fillRect(c2,yr+6,colW,1)});
     y=Math.max(yl,yr)+30;
     // how to pay box
-    const steps=["Open M-Pesa and choose Lipa na M-Pesa, then Pay Bill",`Business no.: ${PAY.paybill}`,`Account no.: ${PAY.account}`,"Enter the amount due for this stage","Check the details show Equity Bank, then enter your PIN","Send the M-Pesa confirmation message to WhatsApp 0116227813"];
+    const steps=["Open M-Pesa and choose Lipa na M-Pesa, then Pay Bill",`Business no.: ${PAY.paybill}`,`Account no.: ${PAY.account}`,"Enter the amount due for this stage","Check the details show Equity Bank, then enter your PIN","Send the M-Pesa confirmation message to WhatsApp 0180627336"];
     const boxH=34+steps.length*15+8;
     x.fillStyle=acc;x.globalAlpha=.08;x.fillRect(M,y,W-2*M,boxH);x.globalAlpha=1;
     x.fillStyle=acc;x.fillRect(M,y,4,boxH);
@@ -586,7 +530,7 @@ async function invoiceCanvas(){
     y+=17+4*13+26;
     hr(y);
     t("Thank you for your business!",11,W/2,y+22,{w:700,a:"center",c:acc});
-    t(`Lewis Waithaka, Web designer  |  ${MY_EMAIL}  |  WhatsApp 0116227813`,8.5,W/2,y+37,{a:"center",c:MUT});
+    t(`Lewis Waithaka, Web designer  |  ${MY_EMAIL}  |  WhatsApp 0180627336`,8.5,W/2,y+37,{a:"center",c:MUT});
     return y+56;
   }
   const probe=document.createElement("canvas").getContext("2d");
@@ -698,7 +642,7 @@ async function emailInvoice(btn){
     const subject=`Website invoice ${QUOTE_NO}: ${pkg.name} package from Lewis Waithaka`;
     const r=await shareFile(ready.pdf,subject,`Website invoice ${QUOTE_NO} from Lewis Waithaka is attached.`);
     if(r==="shared"||r==="cancelled")return;
-    const body=`Hello,\n\nWebsite invoice ${QUOTE_NO} is attached as a PDF.\n\nReply to this email or WhatsApp 0116227813 to get started.\n\nLewis Waithaka\nWeb designer`;
+    const body=`Hello,\n\nWebsite invoice ${QUOTE_NO} is attached as a PDF.\n\nReply to this email or WhatsApp 0180627336 to get started.\n\nLewis Waithaka\nWeb designer`;
     showGuide(ready,"Email the PDF invoice",[
       "Tap <strong>Download PDF invoice</strong> below.",
       "Tap <strong>Open email</strong>. The message is ready, with Lewis copied in.",
@@ -732,9 +676,12 @@ document.addEventListener("change",e=>{
 });
 const SUGGEST=["Blog","FAQ","Menu","Portfolio","Pricing","Team","Testimonials"];
 const esc=t=>t.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-function renderPages(focusLast){
+function renderChips(){
   const used=new Set(state.extra.map(n=>n.trim().toLowerCase()));
   document.getElementById("chips").innerHTML=SUGGEST.filter(n=>!used.has(n.toLowerCase())).map(n=>`<button type="button" class="chip" data-add="${n}">+ ${n}</button>`).join("");
+}
+function renderPages(focusLast){
+  renderChips();
   document.getElementById("pageList").innerHTML=state.extra.map((n,i)=>`<div class="pg">
     <input type="text" value="${esc(n)}" data-i="${i}" placeholder="Page name, e.g. Blog" aria-label="Extra page ${i+1} name">
     <span class="price">${kes(cfg.pagePrice)}</span>
@@ -745,6 +692,7 @@ function addPage(name,focus){if(state.extra.length>=20)return;state.extra.push(n
 document.getElementById("addPage").onclick=()=>addPage("",true);
 document.getElementById("chips").onclick=e=>{const b=e.target.closest("[data-add]");if(b)addPage(b.dataset.add,false)};
 document.getElementById("pageList").onclick=e=>{const b=e.target.closest("[data-rm]");if(b){state.extra.splice(+b.dataset.rm,1);renderPages();calc()}};
+document.getElementById("pageList").addEventListener("focusout",renderChips);
 document.getElementById("pageList").oninput=e=>{const i=e.target.dataset.i;if(i!==undefined){state.extra[+i]=e.target.value;calc()}};
 document.getElementById("clientName").oninput=calc;
 document.getElementById("clientEmail").oninput=()=>schedulePrep();
